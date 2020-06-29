@@ -147,11 +147,32 @@ class TickerBase():
 
         # Getting data from json
         url = "{}/v8/finance/chart/{}".format(self._base_url, self.ticker)
-        data = _requests.get(url=url, params=params, proxies=proxy)
-        if "Will be right back" in data.text:
-            raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
-                               "Our engineers are working quickly to resolve "
-                               "the issue. Thank you for your patience.")
+        
+        #loop the request in case of failure
+        max_retries = 5
+        retry_count = 1
+        successful = False
+
+        while successful == False:
+            this_loop = True
+            data = _requests.get(url=url, params=params, proxies=proxy)
+            if "Will be right back" in data.text:
+                this_loop = False
+                # raise RuntimeError("*** YAHOO! FINANCE IS CURRENTLY DOWN! ***\n"
+                #                 "Our engineers are working quickly to resolve "
+                #                 "the issue. Thank you for your patience.")
+            if "HTTP Status 404" in data.text:
+                this_loop = False
+            
+            if this_loop == True:
+                successful = True
+            else:
+                print("Retries: " + str(retry_count))
+                retry_count += 1
+    
+            if retry_count >= max_retries:
+                return _pd.DataFrame()      
+            
         data = data.json()
 
         # Work with errors
